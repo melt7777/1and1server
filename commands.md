@@ -379,6 +379,19 @@ Redirect to a specific index page:
 DirectoryIndex index.html
 ```
 
+### Troubleshooting 504 Errors / Database import errors: 
+
+504 errors usually indicate the web application cannot access the database server for some reason. Start troubleshooting mysql first. 
+
+Example: If you are trying to import or export a database using PHPMyAdmin and get a 504, 
+
+It will 504 because of the 30 second route timeout. If the import/export does not complete within 30seconds you will get a 504, that is how the platform works.
+
+Please use SSH or MySQL WorkBench instead of PHPMyAdmin to import larger databases.
+
+Back up and restore MySQL databases using MySQL Workbench 6
+https://help.fasthosts.co.uk/app/answers/detail/a_id/2133/~/back-up-and-restore-mysql-databases-using-mysql-workbench-6
+
 ## I have installed my SSL, and https:// URL brings up my site, but I am not getting the green padlock. Why not?
 
 You have a mixed content error. You need to update your code to reflect https:// on all URLs.
@@ -387,7 +400,7 @@ To see evidence of this, you can right-click on your website and "View Source". 
 
 Please have your developer update your website code to use all secure links https instead of http, and the site will show the padlock.
 
-*For more details about mixed content errors: https://wpengine.com/support/mixed-content-errors-no-green-padlock-page/*
+*For more details about mixed content errors: https://wpengine.com/support/mixed-content-errors-no-green-padlock-page/ and/or https://whynopadlock.com*
 
 
 # 1&1 GENERAL FAQ
@@ -602,7 +615,16 @@ However, To help you get started with Remote Desktop Licensing (RD Licensing) or
 
 https://technet.microsoft.com/en-us/library/hh553162(v=ws.10).aspx
 
+## Windows Server: If you want to extend C:
 
+- **ALWAYS** take full backup of data outside of the server (ftp options above)
+- right click C: and D: on the Disk1 and Remove Mirror
+- right click D: on Disk0 and delete partition
+- right click C: on Disk0 and Extend
+- re-create D: on Disk0 using remaining space
+- right click C: on Disk0 and Add Mirror
+- right click D: on Disk0 and Add mirror
+- wait for resynch to complete
 
 # 1&1 LINUX SERVERS FAQ
 
@@ -800,6 +822,16 @@ Using the Plesk repair command: https://docs.plesk.com/en-US/12.5/administrator-
 
 Using mysql command line: https://dev.mysql.com/doc/refman/5.7/en/rebuilding-tables.html
 
+### Plesk license key cannot reach plesk server: 
+
+Plesk License server must be accessible by plesk for licensing purposes. 
+
+If the firewall is blocking the connection to the Plesk license key servers, add an exception for it in iptables and the key should then be able to update.
+
+`iptables -I OUTPUT -p tcp -d ka.plesk.com --dport 5224 -j ACCEPT`
+
+--- 
+
 # WHM/CPANEL FAQ 
 
 ## How does 1&1 offer WHM/cPanel on our servers?
@@ -880,12 +912,33 @@ https://docs.woocommerce.com/document/increasing-the-wordpress-memory-limit/
 
 # Bitnami.com Cloud Applications FAQ
 
-How to use phpmyadmin with Bitnami Apps?
+Bitnami has automated the ability to package, deploy and maintain applications, lowering the barrier to adoption for anyone to deploy and maintain a full spectrum of server applications, development stacks and infrastructure applications in virtually any format.
+
+With a 1&1 Cloud Server or Cloud VPS, you can simply click to deploy any one of these ready-to-run applications from the Bitnami Application Catalog.  In the 1&1 Cloud Panel, click a server, click Actions button above, then search in the Applications section for your favorite app. It will WIPE your server and reinstall that application along with all its requirements. Most of the webapplications run over top of CENTOS 7 Linux. You will still get root SSH access to the server. 
+
+To find out where bitnami installs various components, seek the documentation. 
+
+Most common: Wordpress, Magento, Joomla, Moodle, OwnCloud
+
+You can talk to other Bitnami users and get help on the Community forum: https://community.bitnami.com/
+
+### Bitnami: Wordpress docs: 
+
+https://docs.bitnami.com/general/apps/wordpress/
+
+### Bitnami: How to check MySQL Logs:
+
+https://community.bitnami.com/t/mysql-error-logging/380
+
+### Bitnami: How to check Apache Logs: 
+
+https://docs.bitnami.com/virtual-machine/components/apache/
+
+### Bitnami: How to use phpmyadmin with Bitnami Apps?
 
 https://docs.bitnami.com/virtual-machine/components/phpmyadmin/ 
 
-
-----------------------------------------------------
+----
 
 # SUPPORT WRAPPERS AND MACROS
 
