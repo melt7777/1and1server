@@ -1,4 +1,5 @@
 # Self-Monitoring, Analysis and Reporting Technology System (SMART)
+SMART is a monitoring system included in computer hard disk drives (HDDs) and solid-state drives (SSDs). Its primary function is to detect and report various indicators of drive reliability with the intent of anticipating imminent hardware failures.
 
 ## Table of Contents
 
@@ -121,10 +122,11 @@ ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_
 
 | SMART Attribute Name	| Description |
 | --------------------- |:-----------:|
-| Reallocated_Sector_Ct	| Bad sectors of the drive that were successfully read and replaced with new sectors. The OS does not see these sectors anymore and they cannot affect the OS. Think of these as sectors that the drive has trashed and substituted with other sectors that weren't being used. Even a high number of these reallocated sectors does not indicate it's the cause of problems but it does indicate the drive is beginning to fail. Other attributes will cause errors.
-| Command_Timeout	| The number of operations that timed out and were aborted by the disk firmware. This generally might indicate a problem with the SATA/SCSI cabling. It's not a common error but something to be aware of.
-| Current_Pending_Sector | Similar to Reallocated sectors but the firmware was unable to read the data in the sector and was unable to seamlessly copy the data to a good sector and trash the old one. As these sectors are still "visible" to the OS, they can cause problems and you may see corrupted data on the disk. These errors would need to be manually corrected through OS tools.
-| Offline_Uncorrectable	| General error message indicating uncorrectable errors when reading/writing a sector.
+| #5 Reallocated_Sector_Ct	| Bad sectors of the drive that were successfully read and replaced with new sectors. The OS does not see these sectors anymore and they cannot affect the OS. Think of these as sectors that the drive has trashed and substituted with other sectors that weren't being used. Even a high number of these reallocated sectors does not indicate it's the cause of problems but it does indicate the drive is beginning to fail. Other attributes will cause errors.|
+| #187 Reported Uncorrectable Errors | The count of errors that could not be recovered automatically. |
+| #188 Command_Timeout	| The number of operations that timed out and were aborted by the disk firmware. This generally might indicate a problem with the SATA/SCSI cabling. It's not a common error but something to be aware of.|
+| #197 Current_Pending_Sector | Count of "unstable" sectors waiting to be reallocated, because of Reported Uncorrectable Errors. If these sectors have been reallocated, this count is decreased and Reallocated_Sector_Ct is increased. Simply, is the transition between #187 and #5 when the data survives or #187 and #198 when the data does not survive.|
+| #198 Offline_Uncorrectable	| The total count of uncorrectable errors when reading/writing a sector.
 
 ### Display SMART Self-test Results
 To read the results of a self-test, we can pass the `-l selftest` option. If a test is currently running, we will also see the remaining percentage of the test.  If a test completes with errors, we know that the drive needs to be replaced immediately. If the drive is behind a Software or Hardware RAID then we shouldn't immediately need to worry about any lost data since the RAID rebuild will copy the data over to the replaced drive if the other RAID disks are in good health.
@@ -174,7 +176,7 @@ Test will complete after Wed Mar  1 13:43:14 2017
 ## Advanced smartctl commands
 
 ### Display SMART Errors
-Since we can just replace the dead or dying drive in a RAID array and rebuild it, we rarely need to look at the actual errors on a drive. If we ever need to, the `-l error` option will show us the errors that have been logged and is a good place to start when trying to recover lost or corupted data.
+Since we can just replace the dead or dying drive in a RAID array and rebuild it, we rarely need to look at the actual errors on a drive. If we ever need to, the `-l error` option will show us the errors that have been logged and is a good place to start when trying to recover lost or corrupted data.
 ```
 rescue:~# smartctl -l error /dev/sda
 smartctl 6.4 2014-10-07 r4002 [x86_64-linux-3.10.104] (local build)
@@ -186,33 +188,93 @@ No Errors Logged
 ```
 
 ### Display SMART Attributes Behind RAID Controller
-If a hardware RAID controller is being used, we need to provide `smartctl` the RAID driver and the RAID endpoint so that we access the drive directly and can request the SMART attribute values. We could also use the RAID driver through CLI and then request the SMART attributes for each drive but I find it easiest to use `smartctl` any time we are looking for SMART attributes. The RAID driver is provided with the `-d [3ware,#|areca,#]` option. Since the raw device we provide to `smartctl` this time is the hardware controller, we need to provide the disk number as `,#` after the driver.
+#### Step 1: Find the logical device path
+If a hardware RAID controller is being used, we first need to find the make of the hardware RAID. On most Linux distributions, `lsblk` will list any block devices on the machine. This will tell us the logical device assigned to the controller. In the example below, /dev/`sda` is this logical device.
 ```
-rescue:~# smartctl -i -d areca,1 /dev/sg1
-smartctl 6.4 2014-10-07 r4002 [x86_64-linux-3.10.104] (local build)
-Copyright (C) 2002-14, Bruce Allen, Christian Franke, www.smartmontools.org
+rescue:~# lsblk
+NAME          MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda             8:0    0 931.5G  0 disk
+├─sda1          8:1    0     4G  0 part /
+├─sda2          8:2    0     2G  0 part [SWAP]
+└─sda3          8:3    0 925.5G  0 part
+  ├─vg00-usr  253:0    0     5G  0 lvm  /usr
+  ├─vg00-var  253:1    0     5G  0 lvm  /var
+  └─vg00-home 253:2    0     5G  0 lvm  /home
+```
+#### Step 2: Find the Hardware Controller
+Once we know the logical device, we can run `smartctl -i device` and let smartctl try to discover the RAID Controller. If the output shows an error, the driver is typically provided in the output.
+```
+rescue:~# smartctl -i /dev/sda
+smartctl 6.5 2016-01-24 r4214 [x86_64-linux-4.4.0-128-generic] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+Smartctl open device: /dev/sda failed: DELL or MegaRaid controller, please try adding '-d megaraid,N'
+```
+If the output does not show an error, then we'll see the make of the RAID Controller. In the example below, `Areca`.
+```
+smartctl -i /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
 
 === START OF INFORMATION SECTION ===
-Model Family:     Seagate Barracuda 7200.14 (AF)
-Device Model:     ST1000DM003-1SB10C
-Serial Number:    Z9A240BX
-LU WWN Device Id: 5 000c50 0910073e7
-Firmware Version: CC43
-User Capacity:    1,000,204,886,016 bytes [1.00 TB]
-Sector Sizes:     512 bytes logical, 4096 bytes physical
+Vendor:               Areca
+Product:              ARC-1110-VOL#00
+Revision:             R001
+User Capacity:        1,000,204,402,688 bytes [1.00 TB]
+Logical block size:   512 bytes
+Rotation Rate:        10000 rpm
+Logical Unit id:      0x0004d927fffff800
+Serial number:        0000001449594848
+Device type:          disk
+Transport protocol:   Fibre channel (FCP-2)
+Local Time is:        Tue Jul  3 14:28:02 2018 EDT
+SMART support is:     Available - device has SMART capability.
+SMART support is:     Enabled
+Temperature Warning:  Disabled or Not Supported
+```
+#### Step 3: Use the correct driver to query the SMART attributes.
+We can select the RAID driver with smartctl by passing the `-d [driver],[#]` option where `[driver]` is the hardware RAID make and `[#]` is the drive number behind the controller. This number can be 0 or 1 indexed so expect to try 0, 1, 2... to find each drive.
+```
+rescue:~# smartctl -i -d megaraid,1 /dev/sda
+smartctl 6.5 2016-01-24 r4214 [x86_64-linux-4.4.0-128-generic] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+/dev/sda [megaraid_disk_01] [SAT]: Device open changed type from 'megaraid,1' to 'sat+megaraid,1'
+=== START OF INFORMATION SECTION ===
+Device Model:     TOSHIBA MG04ACA200N
+Serial Number:    37GCK231FVMC
+LU WWN Device Id: 5 000039 7abc8102e
+Add. Product Id:  DELL(tm)
+Firmware Version: FJ2D
+User Capacity:    2,000,398,934,016 bytes [2.00 TB]
+Sector Size:      512 bytes logical/physical
 Rotation Rate:    7200 rpm
 Form Factor:      3.5 inches
-Device is:        In smartctl database [for details use: -P show]
-ATA Version is:   ATA8-ACS T13/1699-D revision 4
-SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 3.0 Gb/s)
-Local Time is:    Mon Feb 27 17:16:59 2017 EST
+Device is:        Not in smartctl database [for details use: -P showall]
+ATA Version is:   ATA8-ACS (minor revision not indicated)
+SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 6.0 Gb/s)
+Local Time is:    Tue Jul  3 08:56:33 2018 EDT
 SMART support is: Available - device has SMART capability.
 SMART support is: Enabled
+```
+When this command outputs an error, it should indicate the actual device path to use. In the example below, we need to switch the `/dev/sda` path to `/dev/sg1`.
+```
+rescue:~# smartctl -i -d areca,1 /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Smartctl open device: /dev/sda [areca_disk#01_enc#01] failed: Input/output error
 ```
 
 ## Quick Usage
 ### Required Data for Drive Replacement
-In order to create a drive replacement request, the output from `smartctl -iA device` **must be** provided to Server Support Team and to our Datacenter Team. The `Reallocated_Sector_Ct` attribute should be > 0 or, while uncommon, other attributes should indicate a failing drive before submitting the ticket.
+In order to create a drive replacement request, the output from `smartctl -iA device` **must be** provided to Server Support Team and to our DC-OPS Team. The `Reallocated_Sector_Ct` attribute should be > 0 or, while uncommon, other attributes should indicate a failing drive before submitting the ticket.
 ```
 rescue:~# smartctl -iHA /dev/sda
 smartctl 6.4 2014-10-07 r4002 [x86_64-linux-3.10.104] (local build)  
@@ -268,5 +330,279 @@ ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_
 ```
 
 ## Examples
-### Failed Drives
-*Pending*
+### MegaRaid
+```
+# LIST BLOCK DEVICES
+rescue:~# lsblk
+NAME          MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda             8:0    0   1.8T  0 disk
+├─sda1          8:1    0     4G  0 part /
+├─sda2          8:2    0     2G  0 part [SWAP]
+└─sda3          8:3    0   1.8T  0 part
+  ├─vg00-usr  252:0    0 184.2G  0 lvm  /usr
+  ├─vg00-var  252:1    0     5G  0 lvm  /var
+  └─vg00-home 252:2    0     5G  0 lvm  /home
+sr0            11:0    1  1024M  0 rom
+# TRY TO QUERY BLOCK DEVICE
+rescue:~# smartctl -iA /dev/sda
+smartctl 6.5 2016-01-24 r4214 [x86_64-linux-4.4.0-128-generic] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+Smartctl open device: /dev/sda failed: DELL or MegaRaid controller, please try adding '-d megaraid,N'
+# FIRST DISK IN ARRAY
+rescue:~# smartctl -iA /dev/sda -d megaraid,0
+smartctl 6.5 2016-01-24 r4214 [x86_64-linux-4.4.0-128-generic] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+/dev/sda [megaraid_disk_00] [SAT]: Device open changed type from 'megaraid,0' to 'sat+megaraid,0'
+=== START OF INFORMATION SECTION ===
+Device Model:     TOSHIBA MG04ACA200N
+Serial Number:    37GAK3RSFVMC
+LU WWN Device Id: 5 000039 7abb81b4a
+Add. Product Id:  DELL(tm)
+Firmware Version: FJ2D
+User Capacity:    2,000,398,934,016 bytes [2.00 TB]
+Sector Size:      512 bytes logical/physical
+Rotation Rate:    7200 rpm
+Form Factor:      3.5 inches
+Device is:        Not in smartctl database [for details use: -P showall]
+ATA Version is:   ATA8-ACS (minor revision not indicated)
+SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 6.0 Gb/s)
+Local Time is:    Tue Jul  3 09:03:32 2018 EDT
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART Attributes Data Structure revision number: 16
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x000b   100   100   050    Pre-fail  Always       -       0
+  2 Throughput_Performance  0x0004   100   100   000    Old_age   Offline      -       0
+  3 Spin_Up_Time            0x0027   100   100   001    Pre-fail  Always       -       3172
+  4 Start_Stop_Count        0x0032   100   100   000    Old_age   Always       -       18
+  5 Reallocated_Sector_Ct   0x0033   100   100   050    Pre-fail  Always       -       0
+  7 Seek_Error_Rate         0x000a   100   100   000    Old_age   Always       -       0
+  8 Seek_Time_Performance   0x0004   100   100   000    Old_age   Offline      -       0
+  9 Power_On_Hours          0x0032   084   084   000    Old_age   Always       -       6541
+ 10 Spin_Retry_Count        0x0032   100   100   000    Old_age   Always       -       0
+ 12 Power_Cycle_Count       0x0032   100   100   000    Old_age   Always       -       17
+192 Power-Off_Retract_Count 0x0032   100   100   000    Old_age   Always       -       15
+193 Load_Cycle_Count        0x0032   100   100   000    Old_age   Always       -       18
+194 Temperature_Celsius     0x0022   100   100   000    Old_age   Always       -       29 (Min/Max 19/39)
+196 Reallocated_Event_Count 0x0032   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0030   100   100   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x0032   200   253   000    Old_age   Always       -       0
+241 Total_LBAs_Written      0x0032   100   100   000    Old_age   Always       -       4591751241
+242 Total_LBAs_Read         0x0032   100   100   000    Old_age   Always       -       5534821321
+
+# SECOND DISK IN ARRAY
+rescue:~# smartctl -iA /dev/sda -d megaraid,1
+smartctl 6.5 2016-01-24 r4214 [x86_64-linux-4.4.0-128-generic] (local build)
+Copyright (C) 2002-16, Bruce Allen, Christian Franke, www.smartmontools.org
+
+/dev/sda [megaraid_disk_01] [SAT]: Device open changed type from 'megaraid,1' to 'sat+megaraid,1'
+=== START OF INFORMATION SECTION ===
+Device Model:     TOSHIBA MG04ACA200N
+Serial Number:    37GCK231FVMC
+LU WWN Device Id: 5 000039 7abc8102e
+Add. Product Id:  DELL(tm)
+Firmware Version: FJ2D
+User Capacity:    2,000,398,934,016 bytes [2.00 TB]
+Sector Size:      512 bytes logical/physical
+Rotation Rate:    7200 rpm
+Form Factor:      3.5 inches
+Device is:        Not in smartctl database [for details use: -P showall]
+ATA Version is:   ATA8-ACS (minor revision not indicated)
+SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 6.0 Gb/s)
+Local Time is:    Tue Jul  3 09:03:34 2018 EDT
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART Attributes Data Structure revision number: 16
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x000b   100   100   050    Pre-fail  Always       -       0
+  2 Throughput_Performance  0x0004   100   100   000    Old_age   Offline      -       0
+  3 Spin_Up_Time            0x0027   100   100   001    Pre-fail  Always       -       3230
+  4 Start_Stop_Count        0x0032   100   100   000    Old_age   Always       -       17
+  5 Reallocated_Sector_Ct   0x0033   100   100   050    Pre-fail  Always       -       0
+  7 Seek_Error_Rate         0x000a   100   100   000    Old_age   Always       -       0
+  8 Seek_Time_Performance   0x0004   100   100   000    Old_age   Offline      -       0
+  9 Power_On_Hours          0x0032   084   084   000    Old_age   Always       -       6540
+ 10 Spin_Retry_Count        0x0032   100   100   000    Old_age   Always       -       0
+ 12 Power_Cycle_Count       0x0032   100   100   000    Old_age   Always       -       16
+192 Power-Off_Retract_Count 0x0032   100   100   000    Old_age   Always       -       14
+193 Load_Cycle_Count        0x0032   100   100   000    Old_age   Always       -       17
+194 Temperature_Celsius     0x0022   100   100   000    Old_age   Always       -       29 (Min/Max 20/38)
+196 Reallocated_Event_Count 0x0032   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0030   100   100   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x0032   200   253   000    Old_age   Always       -       0
+241 Total_LBAs_Written      0x0032   100   100   000    Old_age   Always       -       4586258573
+242 Total_LBAs_Read         0x0032   100   100   000    Old_age   Always       -       4448981797
+```
+
+#### Areca
+```
+# LIST BLOCK DEVICES
+rescue:~# lsblk
+NAME          MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda             8:0    0 931.5G  0 disk
+├─sda1          8:1    0     4G  0 part /
+├─sda2          8:2    0     2G  0 part [SWAP]
+└─sda3          8:3    0 925.5G  0 part
+  ├─vg00-usr  253:0    0     5G  0 lvm  /usr
+  ├─vg00-var  253:1    0     5G  0 lvm  /var
+  └─vg00-home 253:2    0     5G  0 lvm  /home
+# TRY TO QUERY BLOCK DEVICE
+rescue:~# smartctl -iA /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Vendor:               Areca
+Product:              ARC-1110-VOL#00
+Revision:             R001
+User Capacity:        1,000,204,402,688 bytes [1.00 TB]
+Logical block size:   512 bytes
+Rotation Rate:        10000 rpm
+Logical Unit id:      0x0004d927fffff800
+Serial number:        0000001449594848
+Device type:          disk
+Transport protocol:   Fibre channel (FCP-2)
+Local Time is:        Tue Jul  3 15:06:37 2018 EDT
+SMART support is:     Available - device has SMART capability.
+SMART support is:     Enabled
+Temperature Warning:  Disabled or Not Supported
+
+=== START OF READ SMART DATA SECTION ===
+Current Drive Temperature:     30 C
+Drive Trip Temperature:        25 C
+
+Manufactured in week 30 of year 2002
+Specified cycle count over device lifetime:  4278190080
+Accumulated start-stop cycles:  256
+Elements in grown defect list: 0
+
+# FIND CORRECT DEVICE PATH
+rescue:~# smartctl -iA -d areca,1 /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Device /dev/sg1 appears to be an Areca controller.
+do_scsi_cmnd_io with write buffer failed code = ffffffff
+Smartctl open device: /dev/sda [areca_disk#01_enc#01] failed: Input/output error
+# FIRST DISK IN ARRAY
+rescue:~# smartctl -iA -d areca,1 /dev/sg1
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Model Family:     Seagate Barracuda 7200.14 (AF)
+Device Model:     ST1000DM003-1SB10C
+Serial Number:    Z9A2PM9R
+LU WWN Device Id: 5 000c50 0912e87fa
+Firmware Version: CC43
+User Capacity:    1,000,204,886,016 bytes [1.00 TB]
+Sector Sizes:     512 bytes logical, 4096 bytes physical
+Rotation Rate:    7200 rpm
+Device is:        In smartctl database [for details use: -P show]
+ATA Version is:   ATA8-ACS T13/1699-D revision 4
+SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 3.0 Gb/s)
+Local Time is:    Tue Jul  3 15:07:08 2018 EDT
+
+==> WARNING: A firmware update for this drive may be available,
+see the following Seagate web pages:
+http://knowledge.seagate.com/articles/en_US/FAQ/207931en
+http://knowledge.seagate.com/articles/en_US/FAQ/223651en
+
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART Attributes Data Structure revision number: 10
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x000f   073   063   006    Pre-fail  Always       -       23640640
+  3 Spin_Up_Time            0x0003   097   097   000    Pre-fail  Always       -       0
+  4 Start_Stop_Count        0x0032   100   100   020    Old_age   Always       -       26
+  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+  7 Seek_Error_Rate         0x000f   073   060   045    Pre-fail  Always       -       23854513
+  9 Power_On_Hours          0x0032   089   089   000    Old_age   Always       -       9927
+ 10 Spin_Retry_Count        0x0013   100   100   097    Pre-fail  Always       -       0
+ 12 Power_Cycle_Count       0x0032   100   100   020    Old_age   Always       -       26
+183 Runtime_Bad_Block       0x0032   100   100   000    Old_age   Always       -       0
+184 End-to-End_Error        0x0032   100   100   099    Old_age   Always       -       0
+187 Reported_Uncorrect      0x0032   100   100   000    Old_age   Always       -       0
+188 Command_Timeout         0x0032   100   100   000    Old_age   Always       -       0 0 0
+189 High_Fly_Writes         0x003a   100   100   000    Old_age   Always       -       0
+190 Airflow_Temperature_Cel 0x0022   071   061   040    Old_age   Always       -       29 (Min/Max 22/35)
+193 Load_Cycle_Count        0x0032   100   100   000    Old_age   Always       -       438
+194 Temperature_Celsius     0x0022   029   022   000    Old_age   Always       -       29 (0 22 0 0 0)
+195 Hardware_ECC_Recovered  0x001a   021   006   000    Old_age   Always       -       23640640
+197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x003e   200   200   000    Old_age   Always       -       0
+240 Head_Flying_Hours       0x0000   100   253   000    Old_age   Offline      -       9923h+31m+55.487s
+241 Total_LBAs_Written      0x0000   100   253   000    Old_age   Offline      -       752223309
+242 Total_LBAs_Read         0x0000   100   253   000    Old_age   Offline      -       3841647
+
+# FIRST DISK IN ARRAY
+rescue:~# smartctl -iA -d areca,2 /dev/sg1
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-514.16.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Model Family:     Seagate Barracuda 7200.14 (AF)
+Device Model:     ST1000DM003-1SB10C
+Serial Number:    Z9A2PHAQ
+LU WWN Device Id: 5 000c50 0912ede3e
+Firmware Version: CC43
+User Capacity:    1,000,204,886,016 bytes [1.00 TB]
+Sector Sizes:     512 bytes logical, 4096 bytes physical
+Rotation Rate:    7200 rpm
+Device is:        In smartctl database [for details use: -P show]
+ATA Version is:   ATA8-ACS T13/1699-D revision 4
+SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 3.0 Gb/s)
+Local Time is:    Tue Jul  3 15:07:13 2018 EDT
+
+==> WARNING: A firmware update for this drive may be available,
+see the following Seagate web pages:
+http://knowledge.seagate.com/articles/en_US/FAQ/207931en
+http://knowledge.seagate.com/articles/en_US/FAQ/223651en
+
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART Attributes Data Structure revision number: 10
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x000f   073   063   006    Pre-fail  Always       -       23685984
+  3 Spin_Up_Time            0x0003   097   097   000    Pre-fail  Always       -       0
+  4 Start_Stop_Count        0x0032   100   100   020    Old_age   Always       -       26
+  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+  7 Seek_Error_Rate         0x000f   073   060   045    Pre-fail  Always       -       23319524
+  9 Power_On_Hours          0x0032   089   089   000    Old_age   Always       -       9928
+ 10 Spin_Retry_Count        0x0013   100   100   097    Pre-fail  Always       -       0
+ 12 Power_Cycle_Count       0x0032   100   100   020    Old_age   Always       -       26
+183 Runtime_Bad_Block       0x0032   100   100   000    Old_age   Always       -       0
+184 End-to-End_Error        0x0032   100   100   099    Old_age   Always       -       0
+187 Reported_Uncorrect      0x0032   100   100   000    Old_age   Always       -       0
+188 Command_Timeout         0x0032   100   100   000    Old_age   Always       -       0 0 0
+189 High_Fly_Writes         0x003a   100   100   000    Old_age   Always       -       0
+190 Airflow_Temperature_Cel 0x0022   069   059   040    Old_age   Always       -       31 (Min/Max 21/37)
+193 Load_Cycle_Count        0x0032   100   100   000    Old_age   Always       -       437
+194 Temperature_Celsius     0x0022   031   021   000    Old_age   Always       -       31 (0 21 0 0 0)
+195 Hardware_ECC_Recovered  0x001a   019   006   000    Old_age   Always       -       23685984
+197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x003e   200   200   000    Old_age   Always       -       0
+240 Head_Flying_Hours       0x0000   100   253   000    Old_age   Offline      -       9924h+25m+16.948s
+241 Total_LBAs_Written      0x0000   100   253   000    Old_age   Offline      -       752223485
+242 Total_LBAs_Read         0x0000   100   253   000    Old_age   Offline      -       3886495
+```
