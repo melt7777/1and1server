@@ -4,15 +4,15 @@
 
 - [Installing Smartmontools](#installing-smartmontools)
 - [Smartctl CLI and S.M.A.R.T. Attributes](#smartctl-cli-and-smart-attributes)
--- [Getting all information](#getting-all-information)
--- [Showing drive info](#showing-drive-info)
--- [Enable/Disable SMART support](#enabledisable-smart-support)
--- [Showing overall health of drive](#showing-overall-health-of-drive)
--- [Running SMART self-test](#running-smart-self-test)
--- [Reading SMART self-test results](#reading-smart-self-test-results)
--- [Reading SMART errors](#reading-smart-errors)
--- [Getting SMART data](#getting-smart-data)
--- [Getting SMART data behind Hardware RAID](#getting-smart-data-behind-hardware-raid)
+  - [Getting all information](#getting-all-information)
+  - [Showing drive info](#showing-drive-info)
+  - [Enable/Disable SMART support](#enabledisable-smart-support)
+  - [Showing overall health of drive](#showing-overall-health-of-drive)
+  - [Running SMART self-test](#running-smart-self-test)
+  - [Reading SMART self-test results](#reading-smart-self-test-results)
+  - [Reading SMART errors](#reading-smart-errors)
+  - [Getting SMART data](#getting-smart-data)
+  - [Getting SMART data behind Hardware RAID](#getting-smart-data-behind-hardware-raid)
 
 ## Installing Smartmontools
 Smartmontools should be installed by default on most 1&1 images. If the smartctl command isn't available for any reason it can be installed with the following commands:
