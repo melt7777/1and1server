@@ -421,6 +421,9 @@ http://help.1and1.com/domains-c36931/manage-domains-c79822/dns-c37586/explanatio
 
 TXT/SPF Records: How to set up.
 http://help.1and1.com/domains-c36931/manage-domains-c79822/dns-c37586/add-or-remove-txt-records-a792509.html
+https://www.1and1.com/help/domains/configuring-mail-servers-and-other-related-records/using-an-spf-record-to-prevent-spam/?utm_source=hc_old
+
+If you want to send email from 1&1 Mail accounts, your SPF (TXT) record must include `include:_spf.perfora.net include:_spf.customerserver.com` somewhere in the middle. 
 
 For more information how SPF records are built, see this 3rd party tool: http://spfwizard.net
 
