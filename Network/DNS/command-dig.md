@@ -40,7 +40,16 @@ Where:
 * **proto** is the transport protocol of a service.
 * **domain** is the zone hostname of the Service to look for.
 
-Example:
+#### Example:
 ```
 dig _sip._tls.1and1.com srv
+```
+
+## Additional dig options
+### Trace option (+trace)
+To trace through the DNS hierarchy step-by-step the `+trace` option can be appended to any dig command.
+
+#### Example:
+```
+dig www.1and1.com a +trace
 ```
