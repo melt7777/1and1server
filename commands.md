@@ -633,6 +633,26 @@ https://technet.microsoft.com/en-us/library/hh553162(v=ws.10).aspx
 
 # 1&1 LINUX SERVERS FAQ
 
+## 1&1 Root Linux Servers: How to find what files are using the most space:
+
+Run this command to see where all the space is going: `du -shx /* | sort -rh | head`
+
+## 1&1 Root Linux Servers: How to find what packages are using the most space:
+
+The easiest way (without installing extra packages) is:
+
+`dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n`
+
+which displays packages in size order, largest package last, in bytes
+
+Unfortunately on at least some systems, this list includes packages that have been removed but not purged. All such packages can be purged by running:
+
+`dpkg --list |grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge`
+
+Or if you don't want to purge uninstalled packages you can use this variant to filter out the packages which aren't in the 'installed' state from the list:
+
+`dpkg-query -Wf '${db:Status-Status} ${Installed-Size}\t${Package}\n' | sed -ne 's/^installed //p'|sort -n`
+
 ## 1&1 Dedicated Server: How to configure your Software RAID 1 Mirror in Linux:
 
 Rebuild Software RAID on Linux Dedicated Server:
