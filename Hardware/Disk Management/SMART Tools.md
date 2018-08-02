@@ -15,8 +15,11 @@ SMART is a monitoring system included in computer hard disk drives (HDDs) and so
 - Advanced smartctl commands
   - [Display SMART Errors](#display-smart-errors)
   - [Display SMART Attributes Behind RAID Controller](#display-smart-attributes-behind-raid-controller)
-- Simple Usage
+- Quick Usage
   - [Required Data for Drive Replacement](#required-data-for-drive-replacement)
+- Examples
+  - [Megaraid](#megaraid)
+  - [Areca](#areca)
 
 ## Installing Smartmontools
 Smartmontools should be installed by default on most 1&1 images. If the smartctl command isn't available for any reason it can be installed with the following commands:
