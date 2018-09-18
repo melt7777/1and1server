@@ -859,7 +859,19 @@ If the firewall is blocking the connection to the Plesk license key servers, add
 
 # WHM/CPANEL FAQ 
 
-## How does 1&1 offer WHM/cPanel on our servers?
+## WHM: CPanel: What is WHM/cPanel?
+
+cPanel is an online Linux-based control panel used mainly for web hosting. cPanel provides a graphical user interface (GUI) along with many automation tools that aim to simplify web hosting. Administrators, resellers, as well as end users: everyone is capable of owning various aspects of the website.
+
+It is designed in such a way that it can serve both as a dedicated server as well as a virtual private server. some of the application based supports include PHP, MySQL, Apache, etc. some of the email based supports include POP3, IMAP, SMTP, etc.
+
+cPanel offers a number of add-on features to the clients for a better user experience, some of which includes, managing PGP keys (for encrypting and decrypting data), crontab tasks, emails and FTP accounts, etc. Then again, cPanel is best known for its Web Host Manager (WHM) program.
+
+### Web Host Manager
+
+A web-based tool allows various managerial tasks to be carried out with a certain ease. There are basically two types of WHM namely, root-WHM (used mainly by server administrators) and reseller-WHM (for other entities like resellers and end users).
+
+## How does 1&1 offer WHM/cPanel on their servers?
 
 * WHM/cPanel is its own management panel available on Cloud VPS and Cloud Servers.
 
@@ -909,6 +921,33 @@ https://www.youtube.com/watch?v=NDEHX9Q5UYI
 ## WHM: How to install Wordpress on cPanel:
 
 https://documentation.cpanel.net/display/CKB/How+to+Install+WordPress+With+cPanel
+
+## WHM: Adding extra Domains:
+ 
+Log into your cPanel account and go to the Addon Domain under Domains
+Next, you fill up the details like Domain name & Sub-Domain address. In addition, you need to specify the directory where your files are located at Documentary Root
+Type and re-type the FTP password and click on Add Domain to complete the process.
+ 
+## WHM: Creating backups on cPanel:
+
+Log into your cPanel account and under Files section select Backups
+Click on generate/Download Full Website Backup from the Full Backup
+On the next page a drop-down menu appears and from there select Home Directory.
+Click ON the notification for knowing when your backup is complete and click on Generate Backup to finish the process.
+
+## WHM: Using cPanel File Manager:
+
+From the Files section, you will find a bunch of tools to help manage your files and databases. The Task Bar lets you create new files, delete unwanted files, edit a file when and where necessary. The File Tree helps you to navigate the path where your file is located. The Current Location helps you to track where your file is located in the directory. Current Folder Content lets you see what content your current file contains and do plan your actions accordingly.
+
+## WHM: Creating Sub-Domains in cPanel:
+
+From the Domains section select Sub-Domain option and type in the name. Then, select the domain under which the sub-domain is to be created. cPanel automatically creates a folder for that sub-domain in your public HTML folder. All you need to do now is to click on the Create option and you are set to roll.
+
+## WHM: Creating a MySQL database in cPanel:
+ 
+Log into cPanel and under Databases click on MySQL Database.
+In the top right corner, you will find the Jump to the MySQL option: click on it.
+A drop-box appears (Add New User) wherein some information is to be filled up like username, password (you have to retype it), etc. Finally, click on the Create User option and the process is complete.
 
 # Wordpress FAQ
 
